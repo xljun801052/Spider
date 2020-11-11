@@ -1,12 +1,17 @@
 """
     一、HTTPS请求的使用
+
         1.HTTPS = HTTP + SSL（网景公司推出）
             SSL对应网站安全证书，大部分公司自己做的，这样打开页面时提示"此站点证书未受信任，是否仍要打开？"。当然也有一些
             专门做CA证书认证的，他们制作出来的CA证书一般根据浏览器预设置信任的信息来，所以可以直接打开，忽略那种告警提示信息。
+
         2.HTTPS:响应返回的内容是加密的，防止别人抓包窃取信息
-        3.爬虫时面对需要证书验证的url，我们有时候的处理时忽略证书验证
-            context = ssl._create_unverified_context()
-            response = urlopen(Request(url, headers=headers), context=context)
+
+        3.爬虫时面对需要证书验证的url，我们有时候的处理时需要忽略证书验证
+            demo:【虽然如此，我发现不进行证书忽略处理也可以正常访问！以后再详细了解吧...】
+                # 构建context作为urlopen(context=None)方法context参数
+                context = ssl._create_unverified_context()
+                response = urlopen(Request(url, headers=headers), context=context)
 """
 from urllib.request import Request, urlopen
 from fake_useragent import UserAgent
@@ -21,6 +26,7 @@ context = ssl._create_unverified_context()
 response = urlopen(Request(url, headers=headers), context=context)
 info = response.read().decode()
 print(info[:1000])
+print(response.geturl())  # https://www.12306.cn/index/
 # <!DOCTYPE html>
 # <html>
 #
