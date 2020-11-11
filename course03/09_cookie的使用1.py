@@ -2,6 +2,12 @@
     一、针对有些具体的网页需要我们登录之后才能浏览，如何爬取？肯定要先模拟登录呀，拥有了登录状态才能进行下去呀...
         这里主要使用cookie解决。【至于session包括selenium等解决方案后续研究】
 
+            0.Cookielib库的使用
+                cookielib模块的主要作用是提供可存储cookie的对象，以便于与urllib模块配合使用来访问Internet资源。
+                Cookielib模块非常强大，我们可以利用本模块的CookieJar类的对象来捕获cookie并在后续连接请求时重新发送，
+                比如可以实现模拟登录功能。该模块主要的对象有CookieJar、FileCookieJar、MozillaCookieJar、LWPCookieJar
+
+
         两种方法：
 
             1.页面登录，获取登录状态下浏览网页需要发送的cookie，然后request携带cookie进行爬取网页数据
@@ -12,6 +18,19 @@
                 ③保存请求响应时返回的cookie：两种方法
                     i:直接将cookie保存在内存中，发送请求时随调随用
                         HTTPCookieProcessor,build_opener两者结合可以构建保存cookie的opener，使用opener的open()方法发送请求便可以携带对应的cookie了
+                        原理是HTTPCookieProcessor内部有用来保存cookie的CookieJar类
+
+                        # HTTPCookieProcessor部分源码
+                            class HTTPCookieProcessor(BaseHandler):
+                                def __init__(self, cookiejar=None):
+                                    import http.cookiejar
+                                    if cookiejar is None:
+                                        cookiejar = http.cookiejar.CookieJar()
+                                    self.cookiejar = cookiejar
+
+                                def http_request(self, request):
+                                    self.cookiejar.add_cookie_header(request)
+                                    return request
 
                     ii:将cookie保存到本地文件中，然后发送请求时从文件中获取并添加到请求中
                         ①利用到MozillaCookieJar

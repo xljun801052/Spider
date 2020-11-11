@@ -1,3 +1,4 @@
+#参考：https://www.jianshu.com/p/74bd0ceb6182
 #示例说明
 #a、规则：fd1/*
 #说明：忽略目录 fd1 下的全部内容；注意，不管是根目录下的 /fd1/ 目录，还是某个子目录 /child/fd1/ 目录，都会被忽略；
@@ -11,4 +12,5 @@
 #说明：忽略全部内容，但是不忽略 .gitignore 文件、根目录下的 /fw/bin/ 和 /fw/sf/ 目录
 
 
-/.idea/*
+/.idea/
+!/.gitignore
