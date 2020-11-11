@@ -33,7 +33,27 @@
                                     return request
 
                     ii:将cookie保存到本地文件中，然后发送请求时从文件中获取并添加到请求中
-                        ①利用到MozillaCookieJar
+                        ①利用到FileCookieJar的自雷MozillaCookieJar来存储
+                            demo:
+                                i:保存cookie
+                                    request = Request(url, headers=headers)
+                                    # 创建MozillaCookieJar对象实例
+                                    cookie_jar = MozillaCookieJar()
+                                    # 用上面的cookie_jar构造HTTPCookieProcessor对象实例来获得可以存储cookie的opener
+                                    opener = build_opener(HTTPCookieProcessor(cookie_jar))
+                                    response = opener.open(request)
+                                    # 保存cookie到cookie_info.txt文件中
+                                    cookie_jar.save('cookie_info.txt',ignore_expires=True, ignore_discard=False)
+                                    ...
+                                ii:从文件中加载cookie信息并使用
+                                    request = Request(url, headers=headers)
+                                    # 创建MozillaCookieJar对象实例
+                                    cookie_jar = MozillaCookieJar()
+                                    # 加载文件中的cookie
+                                    cookie_jar.load('cookie_info.txt',ignore_expires=True, ignore_discard=False)
+                                    # 用上面的cookie_jar构造HTTPCookieProcessor对象实例来获得携带cookie的opener进行请求发送
+                                    opener = build_opener(HTTPCookieProcessor(cookie_jar))
+                                    response = opener.open(request)
 
 """
 from urllib.request import Request, urlopen

@@ -1,7 +1,10 @@
 """
     一、有时候我们的请求会因为网页地址变更或者服务器域名变换导致出现爬取出错：URLError/HTTPError。如何捕获呢？怎么样才是完整的代码...
-        1.我们在确知错误的情况下可以用try...except...根据具体的异常类型捕获
-        2.根据捕获的异常code来给出更加详细的提示
+        1.第一种异常捕获形式
+            ①我们在确知错误的情况下可以用try...except...根据具体的异常类型捕获
+            ②根据捕获的异常code来给出更加详细的提示
+        2.统一异常处理
+            try...except Exception as e:...
 """
 from urllib.request import Request, urlopen
 from fake_useragent import UserAgent
