@@ -17,6 +17,8 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from bs4 import BeautifulSoup
 import time
+import requests
+import re
 
 username = 'xlys_000'
 pwd = '80105202xlys'
@@ -60,6 +62,10 @@ time.sleep(5)
 chrome.switch_to.window(chrome.window_handles[-1])
 # print(chrome.window_handles)
 # print(chrome.page_source)
+# 在这里打印登录后的sid,用于拼接获取邮件信息的url
+print(chrome.current_url)
+after_login_url = chrome.current_url
+
 # ------------------------------------------------------获取cookie后访问其他需登录才能访问的网页--------------------------------------------------------------------------------
 # 获取登录后的页面cookie
 cookies_for_126email = chrome.get_cookies()
@@ -78,11 +84,14 @@ cookies_output = open(filepath + 'cookies_126.pickle', 'wb')
 pickle.dump(cookies, cookies_output)
 cookies_output.close()
 
-# 提取所有邮件
+# -------------------------------------------------获取联系人信息并保存-------------------------------------------------------------------------------------
+# 这个url地址是浏览器中获取到的全字段提取联系人信息的url
 contact_info_url = 'https://mail.126.com/contacts/call.do?uid=xlys_000@126.com&sid=PApvyrPQrVjkUvUtfMQQlWFEAQSVsEnr&from=webmail&cmd=newapi.getContacts&vcardver=3.0&ctype=all&attachinfos=yellowpage,frequentContacts&freContLim=20'
+# 这个是简化测试过的提取联系人的url【可能只能提取部分数据，不是全部的~~待测试】。sid参数不能为空，可以任意！且必须是账号登录状态才可以访问返回数据。
+base_contact_info_url = 'https://mail.126.com/contacts/call.do?uid=xlys_000@126.com&from=webmail&cmd=newapi.getContacts&sid=xxx'
 # 添加cookie前要先打开一个页面。同时我们先删除所有cookie看看访问效果：应该是不可以访问的！
 chrome.delete_all_cookies()
-chrome.get(contact_info_url)
+chrome.get(base_contact_info_url)
 loaded_cookies = pickle.load(open('../testdata/cookies_126.pickle', 'rb'))
 # 再把所有登录后保存的cookie加上去访问，看看效果：应该可以访问！
 for cookie_key in loaded_cookies:
@@ -96,7 +105,7 @@ for cookie_key in loaded_cookies:
     })
 time.sleep(5)
 chrome.refresh()
-# -------------------------------------------------获取联系人信息并保存-------------------------------------------------------------------------------------
+
 result_info_json = chrome.find_element(By.XPATH, '//pre').text  # 这个联系人列表是json字符串
 # 通过json.loads(json_data)将json字符串转成python对象
 result_info_dict = dict(json.loads(result_info_json))
@@ -107,6 +116,32 @@ if not os.path.exists(contact_filepath):
     os.makedirs(contact_filepath)
 open(contact_filepath + 'contacts.txt', 'wb').write(bytes(json.dumps(contacts_info), encoding='utf-8'))
 time.sleep(5)
+
 # -------------------------------------------------获取邮件信息并保存-------------------------------------------------------------------------------------
-pass
+sid = re.match(r'^[sid=(\w+?)&]$', after_login_url, flags=0)
+base_emails_info_url = 'https://mail.126.com/js6/s?sid={}&func=mbox:listMessages'.format(sid)
+new_cookies = chrome.get_cookies()
+for cookie in new_cookies:
+    chrome.add_cookie(cookie)
+chrome.get(base_emails_info_url)
+# for cookie_key in loaded_cookies:
+#     chrome.add_cookie({
+#         'domain': 'mail.126.com',
+#         'httpOnly': False,
+#         'name': cookie_key,
+#         'path': '/',
+#         'secure': False,
+#         'value': loaded_cookies[cookie_key]
+#     })
+chrome.refresh()
+
+# 换一种请求方式进行验证，是否只要带了正确的cookie就可以获取数据
+# headers = {
+#     'User-Agent': UserAgent().chrome,
+#     'Cookies': 'nts_mail_user=xlys_000@126.com:-1:1; locale=; face=js6; starttime=; df=mail163_letter; mail_upx_nf=; mail_idc=""; secu_info=1; mail_style=js6; mail_uid=xlys_000@126.com; mail_host=mail.126.com; NTES_SESS=dfVarAoPSDQT.iD..xRZip4SSECJ7u_u4ejlh0aiQi4hqC5iqgFBt64K5CozyyinXnAjxASlBaZyWKNpJp1VYyqUxMIZRMG1fMTvsArb4AODI.kuoF_PVKuFp22iTdTKWafZQ3SKuoHuxf4e1Q38Ljj8J91SYUewLrA2ZvNZBReZyLTwYuAyCv5BaXfKYmSrYyHX4cTbUgj_0PLq0dPPO.Dn73wPnbPeIdQP0Tz3QaoeP; S_INFO=1605236141|0|#3&80#|xlys_000@126.com; P_INFO=xlys_000@126.com|1605236141|0|mail126|00&99|shh&1605234113&mail126#shh&null#10#0#0|173034&0|mail126|xlys_000@126.com; mail_upx=t3hz.mail.126.com|t4hz.mail.126.com|t7hz.mail.126.com|t8hz.mail.126.com|t1hz.mail.126.com|t2hz.mail.126.com|t4bj.mail.126.com|t1bj.mail.126.com|t2bj.mail.126.com|t3bj.mail.126.com; Coremail=cd6227563db28%UBfpKluUQdPpTiuyCzUUrRYsXVqNUVgL%g1a63.mail.126.com; cm_last_info=dT14bHlzXzAwMCU0MDEyNi5jb20mZD1odHRwcyUzQSUyRiUyRm1haWwuMTI2LmNvbSUyRmpzNiUyRm1haW4uanNwJTNGc2lkJTNEVUJmcEtsdVVRZFBwVGl1eUN6VVVyUllzWFZxTlVWZ0wmcz1VQmZwS2x1VVFkUHBUaXV5Q3pVVXJSWXNYVnFOVVZnTCZoPWh0dHBzJTNBJTJGJTJGbWFpbC4xMjYuY29tJTJGanM2JTJGbWFpbi5qc3AlM0ZzaWQlM0RVQmZwS2x1VVFkUHBUaXV5Q3pVVXJSWXNYVnFOVVZnTCZ3PWh0dHBzJTNBJTJGJTJGbWFpbC4xMjYuY29tJmw9LTEmdD0tMSZhcz10cnVl; MAIL_SESS=dfVarAoPSDQT.iD..xRZip4SSECJ7u_u4ejlh0aiQi4hqC5iqgFBt64K5CozyyinXnAjxASlBaZyWKNpJp1VYyqUxMIZRMG1fMTvsArb4AODI.kuoF_PVKuFp22iTdTKWafZQ3SKuoHuxf4e1Q38Ljj8J91SYUewLrA2ZvNZBReZyLTwYuAyCv5BaXfKYmSrYyHX4cTbUgj_0PLq0dPPO.Dn73wPnbPeIdQP0Tz3QaoeP; MAIL_SINFO=1605236141|0|#3&80#|xlys_000@126.com; MAIL_PINFO=xlys_000@126.com|1605236141|0|mail126|00&99|shh&1605234113&mail126#shh&null#10#0#0|173034&0|mail126|xlys_000@126.com; mail_entry_sess=17e3081991e945c096e59f6358b79d3b5b3703b1b44b1f7e4b1807482162526cddca3bc0a6a979ee02f5842494eee09ce9409c4c7b732196de7d69b903872c1880ccab53faf03f5e39d23bf65f1444d4d0b5ff20dfeb2319b21ba1582961deafee5309a9d5a12e201025b01e7bd0215e44c7f2afdf31d47caeaf0f5dbb85e7ac0954ab11105a39e1f5e86980176b4d704ed2aad80f8dc47223d9cb73eee3dfae831a0eabff39f384f8aba58c71ea717b3a3e764bb69764cace66c8536d9984c7; Coremail.sid=UBfpKluUQdPpTiuyCzUUrRYsXVqNUVgL; JSESSIONID=2EA77D4762EB642FD4AD8754F09065CC'
+# }
+# time.sleep(5)
+# response = requests.get(emails_info_url, headers=headers)  # 这个地方返回状态码一直是202,应该是反爬技术，建议使用selenium处理!
+# time.sleep(5)
+# print(response.text)
 chrome.close()
